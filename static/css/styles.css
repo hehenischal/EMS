@@ -220,7 +220,7 @@ h1, h2, h3, h4, h5, .brand, .btn {
 
 /* ---------- Auth cards ---------- */
 .auth-card {
-  border: none;
+  border: none; 
   border-radius: var(--card-radius);
   box-shadow: 0 4px 24px rgba(31, 36, 48, 0.08);
 }

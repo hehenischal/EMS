@@ -7,7 +7,6 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from .models import Event
-from tinymce.widgets import TinyMCE
 
 INPUT_CLASS = "form-control"
 
@@ -64,6 +63,11 @@ class EventForm(forms.ModelForm):
         dnt = self.cleaned_data.get("dnt")
         if dnt and dnt <= timezone.now():
             self.add_error("dnt", "Event date and time must be in the future.")
+            return False
+        
+        seat = self.cleaned_data.get("total_seats")
+        if seat < 1:
+            self.add_error("total_seats","Zero and negative number not allowed")
             return False
 
         return True

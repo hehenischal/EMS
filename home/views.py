@@ -48,21 +48,15 @@ def event_list(request):
 
 def event_detail(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
-
-    # All bookings for this event, oldest first — used for both the
-    # attendee table and figuring out which seat box is "yours".
     bookings = event.bookings.select_related('participant').order_by('booked_at')
-
     user_has_joined = False
     my_seat_index = -1
-
     if request.user.is_authenticated:
         for index, booking in enumerate(bookings):
             if booking.participant == request.user:
                 user_has_joined = True
                 my_seat_index = index
                 break
-
     context = {
         'event': event,
         'user_has_joined': user_has_joined,
@@ -76,10 +70,11 @@ def event_detail(request, event_id):
 @login_required
 def join_event(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
-
+    if event.dnt < timezone.now():
+        messages.error("Event has already started")
+        return redirect('home')
     if request.method != 'POST':
         return redirect('event_detail', event_id=event_id)
-
     already_joined = Bookings.objects.filter(
         event=event, participant=request.user
     ).exists()
@@ -112,16 +107,30 @@ def join_event(request, event_id):
 @login_required
 def cancel_event(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
-
     if request.method != 'POST':
         return redirect('event_detail', event_id=event.id)
-
-
+    emails = []
+    bookings = event.bookings.all()
+    emails = [ booking.participant.email for booking in bookings ]
+    send_mail(
+        subject=f"Booking Cancelled: {event.name}",
+                message=(
+                    f"Hi Participant,\n\n"
+                    f"The event {event.name}' on "
+                    f"{event.dnt.strftime('%b %d, %Y %I:%M %p')} at {event.venue} "
+                    f"is has been cancelled.\n\n Contact organizers for for details."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=emails,
+                fail_silently=True,
+    )
     if event.organizer == request.user:
         event.delete()
         messages.success(request, f"Your event '{event.name}' has been cancelled.")
     else:
         messages.warning(request, "You don't have permission to cancel this event.")
+
+
 
     return redirect('event_detail', event_id=event.id)
 
